@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "750967529659",
+    "project_id": "tallerheber-16566",
+    "storage_bucket": "tallerheber-16566.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:750967529659:android:0a85becf32c4cda351c99e",
+        "android_client_info": {
+          "package_name": "com.example.proyectoheber"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCsYS-xXgE3ABGilCeQfr3eVmmOJSgAnj8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:750967529659:android:540e15db31e5b4d851c99e",
+        "android_client_info": {
+          "package_name": "com.example.wear"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCsYS-xXgE3ABGilCeQfr3eVmmOJSgAnj8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -40,6 +41,9 @@ android {
 
 dependencies {
 
+    implementation(platform("com.google.firebase:firebase-bom:33.15.0"))
+    implementation("com.google.firebase:firebase-messaging")
+
     implementation(libs.play.services.wearable)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
@@ -65,5 +69,8 @@ dependencies {
     implementation("androidx.wear.compose:compose-material:1.4.0")
     //estos dos son los ultimos que agregue
     implementation ("androidx.compose.material:material-icons-extended:1.6.0")
+    //pal btn de las notificaciones
+
+
 
 }
