@@ -69,7 +69,12 @@ dependencies {
     implementation("androidx.wear.compose:compose-material:1.4.0")
     //estos dos son los ultimos que agregue
     implementation ("androidx.compose.material:material-icons-extended:1.6.0")
-    //pal btn de las notificaciones
+    //pa la pantalla de vinculacion
+    implementation ("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.0")
+
+
 
 
 

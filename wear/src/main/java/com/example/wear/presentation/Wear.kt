@@ -12,18 +12,21 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.focus.FocusRequester
 import androidx.core.content.ContextCompat
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.wear.compose.material.rememberScalingLazyListState
+import com.example.wear.presentation.LinkScreen
 import com.example.wear.presentation.TallerNotificationScreens
+import com.example.wear.presentation.NotificationRepository
+import com.example.wear.presentation.MensajeNotificacion
 import com.example.wear.presentation.theme.ProyectoHeberTheme
 import com.google.firebase.messaging.FirebaseMessaging
-import androidx.compose.ui.focus.FocusRequester
-import androidx.wear.compose.material.PositionIndicator
-import androidx.wear.compose.material.Scaffold
-import androidx.wear.compose.material.TimeText
-import androidx.wear.compose.material.rememberScalingLazyListState
 import android.content.pm.PackageManager
+import androidx.compose.runtime.collectAsState
 
 class Wear : ComponentActivity() {
     private val TAG = "FCM_TOKEN"
@@ -38,11 +41,19 @@ class Wear : ComponentActivity() {
         }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
-        super.onCreate(savedInstanceState)
-        setTheme(android.R.style.Theme_DeviceDefault)
+    // Estado para token y vinculación
+    private val fcmTokenState = mutableStateOf<String?>(null)
+    private lateinit var prefsEditor: android.content.SharedPreferences.Editor
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // Leer SharedPreferences para estado “vinculado”
+        val prefsName = "wear_prefs"
+        val prefs = getSharedPreferences(prefsName, MODE_PRIVATE)
+        prefsEditor = prefs.edit()
+        val initiallyLinked = prefs.getBoolean(KEY_LINKED, false)
+
+        // Solicitar permiso y obtener token FCM
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             when {
                 ContextCompat.checkSelfPermission(
@@ -55,25 +66,34 @@ class Wear : ComponentActivity() {
         } else {
             obtenerTokenFCM()
         }
+
         setContent {
-            val listState = rememberScalingLazyListState()
-            // Este es tu repo que te da List<ParcialMensaje>
-            val parcial = NotificationRepository.mensajes.collectAsState().value
-
-            // Lo mapeas a List<MensajeNotificacion>
-            val mensajes: List<MensajeNotificacion> = parcial.map {
-                MensajeNotificacion(titulo = it.title, subtitulo = it.subtitle)
-            }
-
             ProyectoHeberTheme {
-                Scaffold(
-                    timeText = { TimeText() },
-                    positionIndicator = { PositionIndicator(listState) }
-                ) {
+                // Estado Compose para si está vinculado o no
+                val isLinkedState = rememberSaveable { mutableStateOf(initiallyLinked) }
+                val focusRequester = remember { FocusRequester() }
+                val listState = rememberScalingLazyListState()
+
+                if (isLinkedState.value) {
+                    // Mostrar pantalla de notificaciones
                     TallerNotificationScreens(
                         scalingLazyListState = listState,
-                        focusRequester = FocusRequester(),
-                        mensajes = mensajes
+                        focusRequester = focusRequester,
+                        mensajes = NotificationRepository.mensajes.collectAsState().value.map {
+                            MensajeNotificacion(titulo = it.title, subtitulo = it.subtitle)
+                        }
+                    )
+                } else {
+                    // Mostrar pantalla de ingreso de código
+                    LinkScreen(
+                        fcmToken = fcmTokenState.value,
+                        onLinkedSuccess = {
+                            // Guardar en prefs y actualizar estado
+                            prefsEditor.putBoolean(KEY_LINKED, true).apply()
+                            isLinkedState.value = true
+                        },
+                        focusRequester = focusRequester,
+                        scalingLazyListState = listState
                     )
                 }
             }
@@ -81,13 +101,18 @@ class Wear : ComponentActivity() {
     }
 
     private fun obtenerTokenFCM() {
-
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
             if (!task.isSuccessful) {
                 Log.w(TAG, "❌ Error obteniendo token FCM", task.exception)
                 return@addOnCompleteListener
             }
-            Log.d(TAG, "✅ Token FCM: ${task.result}")
+            val token = task.result
+            Log.d(TAG, "✅ Token FCM: $token")
+            fcmTokenState.value = token
         }
+    }
+
+    companion object {
+        private const val KEY_LINKED = "is_linked"
     }
 }
