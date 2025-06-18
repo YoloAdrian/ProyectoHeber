@@ -18,20 +18,31 @@ import com.google.firebase.messaging.RemoteMessage
 class MyFirebaseMessagingService : FirebaseMessagingService() {
     private val TAG = "FCM_SERVICE"
     private val CHANNEL_ID = "notificaciones_taller"
+    private val PREFS_NAME = "wear_prefs"
+    private val KEY_RECEIVE_ALERTS = "receive_alerts"
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
         Log.d(TAG, "📨 Mensaje FCM recibido: ${remoteMessage.data}")
 
-        // Obtener título y cuerpo desde la sección 'notification'
+        // Asegurar inicialización del repositorio
+        NotificationRepository.init(applicationContext)
+
         val notificationPayload = remoteMessage.notification
         val title = notificationPayload?.title ?: "Notificación del taller"
-        val body = notificationPayload?.body  ?: "Tienes una nueva notificación"
+        val body = notificationPayload?.body ?: "Tienes una nueva notificación"
 
-        // Mostrar notificación en sistema
-        showNotification(title, body)
-        // Enviar mensaje a UI si la app está activa
-        NotificationRepository.addMensaje(title, body)
+        // 1) Guardar siempre en repositorio
+        NotificationRepository.addMensaje(applicationContext, title, body)
+
+        // 2) Mostrar en sistema sólo si prefs “receive_alerts” está true
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val receiveAlerts = prefs.getBoolean(KEY_RECEIVE_ALERTS, true)
+        if (receiveAlerts) {
+            showNotification(title, body)
+        } else {
+            Log.d(TAG, "Recibir alertas desactivado: no muestro notificación externa")
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -54,7 +65,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
         }
-        // Construir y mostrar notificación
+        // Mostrar notificación
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(title)

@@ -13,20 +13,23 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.core.content.ContextCompat
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
 import androidx.wear.compose.material.rememberScalingLazyListState
 import com.example.wear.presentation.LinkScreen
-import com.example.wear.presentation.TallerNotificationScreens
 import com.example.wear.presentation.NotificationRepository
-import com.example.wear.presentation.MensajeNotificacion
+import com.example.wear.presentation.ParcialMensaje
+import com.example.wear.presentation.TallerNotificationScreens
 import com.example.wear.presentation.theme.ProyectoHeberTheme
 import com.google.firebase.messaging.FirebaseMessaging
 import android.content.pm.PackageManager
-import androidx.compose.runtime.collectAsState
+
 
 class Wear : ComponentActivity() {
     private val TAG = "FCM_TOKEN"
@@ -41,27 +44,38 @@ class Wear : ComponentActivity() {
         }
     }
 
-    // Estado para token y vinculación
+    // Estado para token FCM
     private val fcmTokenState = mutableStateOf<String?>(null)
     private lateinit var prefsEditor: android.content.SharedPreferences.Editor
 
+    companion object {
+        private const val KEY_LINKED = "is_linked"
+        private const val KEY_RECEIVE_ALERTS = "receive_alerts"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Leer SharedPreferences para estado “vinculado”
+        // Inicializar repositorio para que cargue notificaciones guardadas
+        NotificationRepository.init(this)
+
         val prefsName = "wear_prefs"
         val prefs = getSharedPreferences(prefsName, MODE_PRIVATE)
         prefsEditor = prefs.edit()
         val initiallyLinked = prefs.getBoolean(KEY_LINKED, false)
+        val initiallyReceiveAlerts = prefs.getBoolean(KEY_RECEIVE_ALERTS, true)
 
-        // Solicitar permiso y obtener token FCM
+        // Pedir permiso de notificaciones y obtener token FCM
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             when {
                 ContextCompat.checkSelfPermission(
                     this, Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED -> obtenerTokenFCM()
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    obtenerTokenFCM()
+                }
                 shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) ->
                     requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                else -> requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                else ->
+                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         } else {
             obtenerTokenFCM()
@@ -69,28 +83,35 @@ class Wear : ComponentActivity() {
 
         setContent {
             ProyectoHeberTheme {
-                // Estado Compose para si está vinculado o no
-                val isLinkedState = rememberSaveable { mutableStateOf(initiallyLinked) }
+                var isLinkedState by rememberSaveable { mutableStateOf(initiallyLinked) }
+                var isReceiveAlerts by rememberSaveable { mutableStateOf(initiallyReceiveAlerts) }
                 val focusRequester = remember { FocusRequester() }
                 val listState = rememberScalingLazyListState()
+                val mensajes by NotificationRepository.mensajes.collectAsState()
+                val fcmToken by remember { fcmTokenState }  // obtiene el token
 
-                if (isLinkedState.value) {
-                    // Mostrar pantalla de notificaciones
+                if (isLinkedState) {
                     TallerNotificationScreens(
                         scalingLazyListState = listState,
                         focusRequester = focusRequester,
-                        mensajes = NotificationRepository.mensajes.collectAsState().value.map {
-                            MensajeNotificacion(titulo = it.title, subtitulo = it.subtitle)
+                        mensajes = mensajes,
+                        receiveAlerts = isReceiveAlerts,
+                        onReceiveAlertsChange = { new ->
+                            isReceiveAlerts = new
+                            prefsEditor.putBoolean(KEY_RECEIVE_ALERTS, new).apply()
+                        },
+                        fcmToken = fcmToken,
+                        onUnlink = {
+                            prefsEditor.putBoolean(KEY_LINKED, false).apply()
+                            isLinkedState = false
                         }
                     )
                 } else {
-                    // Mostrar pantalla de ingreso de código
                     LinkScreen(
-                        fcmToken = fcmTokenState.value,
+                        fcmToken = fcmToken,
                         onLinkedSuccess = {
-                            // Guardar en prefs y actualizar estado
                             prefsEditor.putBoolean(KEY_LINKED, true).apply()
-                            isLinkedState.value = true
+                            isLinkedState = true
                         },
                         focusRequester = focusRequester,
                         scalingLazyListState = listState
@@ -110,9 +131,5 @@ class Wear : ComponentActivity() {
             Log.d(TAG, "✅ Token FCM: $token")
             fcmTokenState.value = token
         }
-    }
-
-    companion object {
-        private const val KEY_LINKED = "is_linked"
     }
 }

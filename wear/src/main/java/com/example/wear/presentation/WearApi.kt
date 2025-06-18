@@ -9,4 +9,9 @@ interface WearApi {
     suspend fun linkSmartwatch(
         @Body request: LinkSmartwatchRequest
     ): Response<LinkSmartwatchResponse>
+
+    @POST("client/desvincular_smartwatch")
+    suspend fun unlinkSmartwatch(
+        @Body request: UnlinkSmartwatchRequest
+    ): Response<Void> // o Response<Any> por si se retorna JSON el backend
 }
