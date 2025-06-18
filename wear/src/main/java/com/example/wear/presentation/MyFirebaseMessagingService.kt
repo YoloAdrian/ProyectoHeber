@@ -23,19 +23,20 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
-        Log.d(TAG, "📨 Mensaje FCM recibido: ${remoteMessage.data}")
+        Log.d(TAG, "📨 Mensaje FCM recibido: data=${remoteMessage.data}, notification=${remoteMessage.notification}")
 
-        // Asegurar inicialización del repositorio
+        // Inicializar repositorio
         NotificationRepository.init(applicationContext)
 
-        val notificationPayload = remoteMessage.notification
-        val title = notificationPayload?.title ?: "Notificación del taller"
-        val body = notificationPayload?.body ?: "Tienes una nueva notificación"
+        // Extraer título y cuerpo preferentemente desde data
+        val data = remoteMessage.data
+        val title = data["title"] ?: remoteMessage.notification?.title ?: "Notificación del taller"
+        val body = data["subtitle"] ?: data["message"] ?: remoteMessage.notification?.body ?: "Tienes una nueva notificación"
 
-        // 1) Guardar siempre en repositorio
+        // Guardar siempre en repositorio
         NotificationRepository.addMensaje(applicationContext, title, body)
 
-        // 2) Mostrar en sistema sólo si prefs “receive_alerts” está true
+        // Mostrar en sistema si prefs “receive_alerts” está true
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val receiveAlerts = prefs.getBoolean(KEY_RECEIVE_ALERTS, true)
         if (receiveAlerts) {
@@ -44,6 +45,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             Log.d(TAG, "Recibir alertas desactivado: no muestro notificación externa")
         }
     }
+
 
     @SuppressLint("MissingPermission")
     private fun showNotification(title: String, body: String) {

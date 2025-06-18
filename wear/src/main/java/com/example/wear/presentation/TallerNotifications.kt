@@ -56,6 +56,7 @@ import java.time.format.DateTimeFormatter
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
+
 private val azulRey = Color(0xFF007AFF)
 private val amarillo = Color(0xFFFFD700)
 
@@ -98,6 +99,17 @@ fun TallerNotificationScreens(
                     onDismiss = { NotificationRepository.removeMensaje(context, mensaje) }
                 )
             }
+        }
+        item {
+            ToggleChip(
+                checked = receiveAlerts,
+                onCheckedChange = { new -> onReceiveAlertsChange(new) },
+                label = { Text("Recibir alertas", color = Color.White) },
+                toggleControl = { Switch(checked = receiveAlerts) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+            )
         }
         item {
             Button(
@@ -150,6 +162,9 @@ fun TallerNotificationScreens(
         }
     }
 }
+
+
+
 @Composable
 fun DismissiblePillCard(
     mensaje: ParcialMensaje,
@@ -193,6 +208,7 @@ fun DismissiblePillCard(
         )
     }
 }
+
 @Composable
 private fun PillCardContent(
     title: String,
@@ -231,6 +247,7 @@ private fun PillCardContent(
         }
     }
 }
+
 @Composable
 fun HeaderNotificaciones() {
     val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
